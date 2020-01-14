@@ -28,6 +28,7 @@ class SynopCell : UITableViewCell {
     @IBOutlet weak var WindDirection: UIImageView!
     @IBOutlet var SunMinutes: UILabel!
     @IBOutlet weak var SunPower: UILabel!
+    @IBOutlet weak var PluieH: UILabel!
 }
 
 enum WeatherType {
@@ -58,8 +59,9 @@ class SynopTableViewController: UITableViewController {
     @objc func refresh() {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyyMMdd"
+        let sYesterday = formatter.string(from: Calendar.current.date(byAdding: .day, value: -1, to: Date())!)
         let sToday = formatter.string(from: Date()) // string purpose I add here
-        let url = URL(string: "http://www.ogimet.com/cgi-bin/getsynop?begin=\(sToday)0000&end=\(sToday)2359&state=Fra")!
+        let url = URL(string: "http://www.ogimet.com/cgi-bin/getsynop?begin=\(sYesterday)0600&end=\(sToday)2359&state=Fra")!
         
         // Load datas
         let task = URLSession.shared.dataTask(with: url) {(data, response, error) in
@@ -90,6 +92,15 @@ class SynopTableViewController: UITableViewController {
     }
     
     func sortTimeDESC(this:Synop, that:Synop) -> Bool {
+        if (this.iDateYear != that.iDateYear) {
+            return this.iDateYear > that.iDateYear;
+        }
+        if (this.iDateMonth != that.iDateMonth) {
+            return this.iDateMonth > that.iDateMonth;
+        }
+        if (this.iDateDay != that.iDateDay) {
+            return this.iDateDay > that.iDateDay;
+        }
         return this.iTime > that.iTime
     }
     
@@ -182,13 +193,24 @@ class SynopTableViewController: UITableViewController {
         // BioMeteo
         if (synop.dBioMeteo != nil) {
             cell.BioMeteo?.text = String(format:"%2.1f", synop.dBioMeteo!)
+        } else {
+            cell.BioMeteo?.text = ""
+            cell.BioMeteo?.backgroundColor = UIColor.clear
         }
         
         if (synop.sRainMM_sec3 != "0 mm") {
             cell.Pluie?.text = "\(synop.sRainMM_sec3)"
+            if (synop.sRainH_sec3 != "1h") {
+                cell.PluieH?.text = "\(synop.sRainH_sec3)"
+            } else {
+                cell.PluieH?.text = " "
+                cell.PluieH?.backgroundColor = UIColor.clear
+            }
         } else {
             cell.Pluie?.text = " "
             cell.Pluie?.backgroundColor = UIColor.clear
+            cell.PluieH?.text = " "
+            cell.PluieH?.backgroundColor = UIColor.clear
         }
         if (synop.sGroundState.count > 0) {
             cell.GroundState?.text = "\(synop.sGroundState)"

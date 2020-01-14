@@ -1,0 +1,10 @@
+{
+  "commitish" : "2.1.0",
+  "iOS" : [
+    {
+      "name" : "Solar",
+      "hash" : "926cb2c428cc60441f44a28dc8d415452d927a68551bedb8083d6885881492b2",
+      "swiftToolchainVersion" : "5.1.2 (swiftlang-1100.0.278 clang-1100.0.33.9)"
+    }
+  ]
+}

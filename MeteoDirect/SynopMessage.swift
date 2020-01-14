@@ -15,6 +15,9 @@ class Synop {
     var sRawSynop: String
     var stationId: Int
     var sTime: String
+    var iDateYear: Int
+    var iDateMonth: Int
+    var iDateDay: Int
     var iTime: Int
     var iTimeUTC: Int
     var outString: String
@@ -44,6 +47,7 @@ class Synop {
     var sGroundState: String = ""
     var sGroundStateSnow: String = ""
     var sRainMM_sec3: String = ""
+    var sRainH_sec3: String = ""
     var fRainMM_sec3: Float = 0.0 // Pas de pluie ou non défini= 0.0, Traces = 0.01, ensuite 0.1, 0.2....
 
     init(rawdata: String) {
@@ -53,6 +57,9 @@ class Synop {
         self.stationId = Int(arrRawData[0])!
         self.sRawSynop = String(arrRawData[6])
         self.sTime = String(Int(arrRawData[4])!+1)+"h"
+        self.iDateYear = Int(arrRawData[1])!
+        self.iDateMonth = Int(arrRawData[2])!
+        self.iDateDay = Int(arrRawData[3])!
         self.iTime = Int(arrRawData[4])!+1
         self.iTimeUTC = Int(arrRawData[4])!
         self.arrSynop = arrRawData[6].components(separatedBy: " ")
@@ -64,11 +71,12 @@ class Synop {
     // 333 34/// 55301 20577 59040 60007 87703 91003 90710 91103 555 60005 90760 91103==
     
     func parse() {
-        print ("Parsing SYNOP:\n\(self.rawdata)")
+        print ("--- Parsing SYNOP: --------------------------------------------------\n\(self.rawdata)\n-----------------------------------------------------------------------")
         
         
         // iRiXhVV - Precipitation Inclusion-Exclusion / Type operation / Cloud height / Visibility Group
         //-----------------------------------------------------------------------------------------------
+        print("iRiXhVV: \(self.arrSynop[3])")
         // Cloud height
         self.sCloudHeightCode = String(String(self.arrSynop[3]).dropLast(2).dropFirst(2))
         if (self.sCloudHeightCode.count == 1 && self.sCloudHeightCode != "/") {
@@ -82,7 +90,7 @@ class Synop {
             if (iVisi <= 50) {
                 self.fHorizontalVisibility = Float(iVisi) / 10
             } else if (iVisi <= 80) {
-                self.fHorizontalVisibility = Float(iVisi) - 30
+                self.fHorizontalVisibility = Float(iVisi) - 50
             } else {
                 switch iVisi {
                 case 81: self.fHorizontalVisibility = 35
@@ -107,6 +115,7 @@ class Synop {
                 default: self.fHorizontalVisibility = 0
                 }
             }
+            print("HorizontalVisibility: \(self.fHorizontalVisibility)")
         }
 
         
@@ -196,6 +205,7 @@ class Synop {
             let period = Int(group[0].dropFirst(4))!
             let sPeriod = arrPeriodRain[period]
             self.sRainMM = self.sRainMM! + " (\(sPeriod!))"
+            print("Pluie: \(self.sRainMM)")
         }
         
         // 7wwW1W2 - Present and Past Weather Group
@@ -282,10 +292,13 @@ class Synop {
         // 3E/// - State of the ground without snow or measurable ice cover
         //--------------------------------------
         // E = Use code table 0901.
+        // If ice and/or snow data are available, this group shall be reported in the form 3EsnTgTg = 3/snTgTg
         group = self.getGroups(groupId:3, sectionId:3)
         if (group.count >= 1) {
             let code = String(group[0].dropLast(3).dropFirst())
-            self.sGroundState = arrGroundState[Int(code)!]!
+            if (code != "/") {
+                self.sGroundState = arrGroundState[Int(code)!]!
+            }
             //TODO add table for code
         }
         
@@ -307,13 +320,14 @@ class Synop {
             }
             if (group.count >= 2) {
                 if (group[1].dropLast(4) == "2") {
-                    self.iSunRadiation = Int(group[1].dropFirst())!
+                    self.iSunRadiation = Int(Double(group[1].dropFirst())!/3.6)
                 }
             }
         }
         
         // 6 Pluie
         //--------
+        // 69947 : pluie
         group = self.getGroups(groupId:6, sectionId:3)
         if (group.count >= 1) {
             let value = Int(group[0].dropLast().dropFirst())!
@@ -327,6 +341,13 @@ class Synop {
                 self.sRainMM_sec3 = "0,\(value % 990) mm"
                 self.fRainMM_sec3 = Float(value - 990)/10.0
             }
+            
+            let period = Int(group[0].dropFirst(4))!
+            let sPeriod = arrPeriodRain[period]
+            self.sRainH_sec3 = "\(sPeriod!)h"
+
+            
+            print("Pluie: \(self.sRainMM_sec3)")
         }
         
         // 911ff - Rafale le plus élevée
@@ -339,7 +360,6 @@ class Synop {
     }
     
     func getGroups(groupId:Int, sectionId:Int) -> Array<String> {
-        print("getGroups(id:\(groupId), section:\(sectionId)")
         let id3 = arrSynop.index(of: "333")
         let id5 = arrSynop.index(of: "555")
         var ret:Array<String> = []
@@ -387,7 +407,7 @@ class Synop {
 
             }
         }
-        print("returned : id:\(ret)")
+        print("Sec:\(sectionId) Gr(:\(groupId): \(ret)")
 
         return ret
     }
@@ -420,8 +440,8 @@ class Synop {
     
     // Code table 4019 Duration of period of precipitation
     let arrPeriodRain: [Int:String] = [
-        1: "6h",
-        2: "12h",
+        1: "6",
+        2: "12",
         3: "18",
         4: "24",
         5: "1",
